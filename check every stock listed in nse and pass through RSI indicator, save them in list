@@ -1,0 +1,36 @@
+import nsepy as nse
+from nsepy.history import get_price_list
+from datetime import date
+from nsepy import get_history
+import pandas as pd
+
+# Get a list of stocks listed on the NSE
+prices = get_price_list(dt=date(2022,11,11))
+prices = prices['SYMBOL']
+len(prices)
+# Initialize an empty list to store the buy calls
+buy_calls = []
+
+# Iterate over the list of stocks
+for stock in prices :
+    # Download the stock price data
+    df = get_history(stock, start=date(2022,6,6),end=date(2023,1,1))
+
+    # Calculate the technical indicators
+    df['MOV20'] = df['Close'].rolling(20).mean()
+    df['price change'] = df['Close'].pct_change()
+    df['upmove']= df['price change'].apply(lambda x: x if x > 0 else 0)
+    df['downmove']= df['price change'].apply(lambda x: abs(x) if x < 0 else 0)
+    df['avg up']= df['upmove'].rolling(15).mean()
+    df['avg down']= df['downmove'].rolling(15).mean()
+    df['RS']= df['avg up']/df['avg down']
+    df['RSI']= 100-(100/(df['RS']+1))
+    df['RSIL'] = 20 #lower value of RSI for buy signal
+    df['RSIU'] = 80 #Upper value of RSI for sell signal
+    df=df.dropna()
+    
+    # Check if the RSI of the last row is greater than 20
+    if not df.empty:
+        if df.RSI.iloc[-1] < 20:
+        # If it is, add the stock to the buy
+            buy_calls.append(stock)
